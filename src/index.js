@@ -102,21 +102,17 @@ function addElementUnder(element, props, style, elementId, parentId) {
       }
     }
 
-    const setSlider = (i) => {
-      if (currentFocusedIndex == i) {
-        slider.style.visibility = 'hidden';
-      } else {
-        let lastDateIndex = currentFocusedHistoricalData.length - 1;
-        slider.setAttribute('max', lastDateIndex);
-        slider.setAttribute('min', 0);
-        slider.value = lastDateIndex;
-        slider.style.visibility = 'visible';
+    const setSlider = () => {
+      let lastDateIndex = currentFocusedHistoricalData.length - 1;
+      slider.setAttribute('max', lastDateIndex);
+      slider.setAttribute('min', 0);
+      slider.value = lastDateIndex;
+      slider.style.visibility = 'visible';
 
-        const data = currentFocusedHistoricalData[lastDateIndex];
-        const initialDate = new Date(data.Date);
-        sliderLabel.innerHTML = `${data.Country} in 
+      const data = currentFocusedHistoricalData[lastDateIndex];
+      const initialDate = new Date(data.Date);
+      sliderLabel.innerHTML = `${data.Country} in 
         ${initialDate.toLocaleDateString()} Confirmed ${data.TotalConfirmed} Deaths ${data.TotalDeaths}`
-      }
     }
 
     const highlightDot = (dot) => {
@@ -156,27 +152,30 @@ function addElementUnder(element, props, style, elementId, parentId) {
         .attr('y2', Scatter.getCanvasHeight);
     }
 
-    const handleDotClick = async function(d, i) {
-      if (i === currentFocusedIndex) {
-        removeHighlight();
-        removeLinesToAxis();
-        currentFocusedIndex = -1;
-      } else {
+    const handleDotClick = async function (d, i) {
+      event.stopPropagation();
+      if (i !== currentFocusedIndex) {
+        currentFocusedIndex = i;
         removeHighlight();
         highlightDot(this);
         removeLinesToAxis();
         addLinesToAxis(d);
-        updateGraph(summaryData);
         setTooltipValue(d);
         await setHistoricalData(d);
-        setSlider(i);
-        currentFocusedIndex = i;
+        setSlider();
       }
     }
 
     // Base graph
     const Scatter = scatter();
     const graph = Scatter.setCanvas(800, 500, 'confirmed-deaths');
+    select('#confirmed-deaths > svg').on('click', function () {
+      removeHighlight();
+      removeLinesToAxis();
+      updateGraph(summaryData);
+      slider.style.visibility = 'hidden';
+      sliderLabel.innerHTML = '';
+    })
     const xScale = Scatter.getScale(0.1, max(summaryData, getTotalDeaths), 0, Scatter.getCanvasWidth());
     Scatter.setXAxis(xScale, 10);
     const yScale = Scatter.getScale(0.1, max(summaryData,  getTotalConfirmed), Scatter.getCanvasHeight(), 0);
@@ -195,6 +194,7 @@ function addElementUnder(element, props, style, elementId, parentId) {
       .on('mousemove', setTooltipValue)
       .on('mouseout', () => tooltip.style('visibility', 'hidden'))
       .on('click', handleDotClick);
+
     const tooltip = Scatter.setTooltip({});
 
     // Slider
@@ -222,6 +222,5 @@ function addElementUnder(element, props, style, elementId, parentId) {
       removeLinesToAxis();
       addLinesToAxis(newData);
     }
-
   }
 })();

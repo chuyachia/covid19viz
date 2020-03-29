@@ -20,7 +20,8 @@ export const canvas = () => {
         .attr('height', height)
         .append('g')
         .attr('transform',
-          'translate(' + margin.left + ',' + margin.top + ')');
+          'translate(' + margin.left + ',' + margin.top + ')')
+          
       canvasWidth = width- margin.left - margin.right;
       canvasHeight = height - margin.top - margin.bottom;
 
