@@ -1,3 +1,31 @@
+body {
+  font-family: Open Sans;
+  padding-left: 15px;
+  padding-right: 15px;
+}
 .graph-wrap {
   display: flex;
+}
+.graph-title {
+  text-align: center;
+}
+
+.input-label {
+  font-weight: bolder;
+}
+
+.space-between-text {
+  display: flex;
+  justify-content: space-between;
+}
+
+.line {
+  fill: none;
+  /* stroke-width: 2px;
+  stroke: grey;
+  opacity: 0.5; */
+}
+
+#confirmed-deaths circle {
+  cursor: pointer;
 }

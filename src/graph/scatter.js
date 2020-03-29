@@ -4,7 +4,6 @@ import {logScale} from'../mixin/logScale';
 import {xAxis} from'../mixin/xAxis';
 import {yAxis} from'../mixin/yAxis';
 import {tooltip} from '../mixin/tooltip';
-import { selectAll } from 'd3';
 
 export const scatter = () => {
   const self = {
