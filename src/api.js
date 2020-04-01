@@ -47,3 +47,13 @@ export async function fetchHistoricalData(countryCode) {
 
   return combined;
 }
+
+export async function fetchCountriesList() {
+    const res = await fetch(apiBase + '/countries');
+    if (res.ok) {
+      const data = await res.json();
+      return data;
+    } else {
+      return [];
+    }
+}

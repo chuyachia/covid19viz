@@ -21,11 +21,12 @@ body {
 
 .line {
   fill: none;
-  /* stroke-width: 2px;
-  stroke: grey;
-  opacity: 0.5; */
 }
 
 #confirmed-deaths circle {
+  cursor: pointer;
+}
+
+#after-100days .line:not(.highlighted) {
   cursor: pointer;
 }

@@ -1,9 +1,15 @@
 import {select} from 'd3-selection';
 import {max} from 'd3-array';
-import {scatter} from './graph/scatter';
 
-import {fetchSummaryData, fetchHistoricalData} from './api';
-import {addElementUnder} from './util';
+import {margin} from '../mixin/margin';
+import {canvas} from '../mixin/canvas';
+import {logScale} from'../mixin/logScale';
+import {xAxis} from'../mixin/xAxis';
+import {yAxis} from'../mixin/yAxis';
+import {dot} from '../mixin/dot';
+import {tooltip} from '../mixin/tooltip';
+import {fetchSummaryData, fetchHistoricalData} from '../api';
+import {addElementUnder} from '../util';
 
 export const DeathsConfirmedGraph = async function () {
   const defaultColor = '#20B2AA';
@@ -37,7 +43,7 @@ export const DeathsConfirmedGraph = async function () {
   }
 
   const setTooltipValue = (d) => {
-    tooltip.style('top', (event.pageY + 30) + 'px')
+    tooltipObject.style('top', (event.pageY + 30) + 'px')
       .style('left', event.pageX + 'px')
       .html(`${d.Country} Confirmed ${d.TotalConfirmed.toLocaleString()} Deaths ${d.TotalDeaths.toLocaleString()}`);
   }
@@ -74,27 +80,29 @@ export const DeathsConfirmedGraph = async function () {
   }
 
   const removeLinesToAxis = () => {
-    graph.selectAll('line').remove();
+    graph.selectAll('line.hightlight-line').remove();
   }
 
   const addLinesToAxis = (d) => {
     graph
       .append('line')
+      .attr('class', 'hightlight-line')
       .style('stroke', 'grey')
       .style('stroke-dasharray', ('2, 3'))
       .attr('x1', 0)
       .attr('y1', yScale(d.TotalConfirmed))
-      .attr('x2', Scatter.getCanvasWidth)
+      .attr('x2', GraphMaker.getCanvasWidth)
       .attr('y2', yScale(d.TotalConfirmed));
 
     graph.append('line')
+      .attr('class', 'hightlight-line')
       .style('stroke', 'grey')
       .style('stroke-dasharray', ('2, 3'))
       .attr('x1', 0)
       .attr('x1', xScale(d.TotalDeaths))
       .attr('y1', 0)
       .attr('x2', xScale(d.TotalDeaths))
-      .attr('y2', Scatter.getCanvasHeight);
+      .attr('y2', GraphMaker.getCanvasHeight);
   }
 
   const handleDotClick = async function (d, i) {
@@ -114,9 +122,18 @@ export const DeathsConfirmedGraph = async function () {
   // Base graph
   const graphTitle = addElementUnder('h2', { class: 'graph-title' }, {}, 'confirmed-deaths-graph-title', 'confirmed-deaths');
   graphTitle.innerHTML = 'Total Deaths - Total Confirmed Cases';
-  const Scatter = scatter();
-  Scatter.setMargin({ top: 10, right: 30, bottom: 60, left: 60 });
-  const graph = Scatter.setCanvas(800, 600, 'confirmed-deaths');
+  const GraphMaker =  Object.assign(
+    {},
+    dot(),
+    margin(),
+    canvas(),
+    logScale(),
+    xAxis(),
+    yAxis(),
+    tooltip(),
+  );
+  GraphMaker.setMargin({ top: 10, right: 30, bottom: 80, left: 80 });
+  const graph = GraphMaker.setCanvas(800, 600, 'confirmed-deaths');
   select('#confirmed-deaths > svg').on('click', function () {
     removeHighlight();
     removeLinesToAxis();
@@ -125,11 +142,11 @@ export const DeathsConfirmedGraph = async function () {
     sliderLabel.innerHTML = '';
     currentFocusedIndex = -1;
   })
-  const xScale = Scatter.getLogScale(0.1, max(summaryData, getTotalDeaths), 0, Scatter.getCanvasWidth());
-  Scatter.setXAxis(xScale, 6, 'Total Deaths');
-  const yScale = Scatter.getLogScale(0.1, max(summaryData, getTotalConfirmed), Scatter.getCanvasHeight(), 0);
-  Scatter.setYAxis(yScale, 6, 'Total Confirmed Cases');
-  const dots = Scatter.drawDots({
+  const xScale = GraphMaker.getLogScale(0, max(summaryData, getTotalDeaths), 0, GraphMaker.getCanvasWidth(), 10);
+  GraphMaker.setXAxis({ scale: xScale, tickNumber: 3, label: 'Total Deaths' });
+  const yScale = GraphMaker.getLogScale(0, max(summaryData, getTotalConfirmed), GraphMaker.getCanvasHeight(), 0, 10**3);
+  GraphMaker.setYAxis({ scale: yScale, label: 'Total Confirmed Cases' });
+  const dots = GraphMaker.drawDots({
     data: summaryData,
     x: 'TotalDeaths',
     y: 'TotalConfirmed',
@@ -139,12 +156,12 @@ export const DeathsConfirmedGraph = async function () {
     color: defaultColor,
   });
 
-  dots.on('mouseover', () => tooltip.style('visibility', 'visible'))
+  dots.on('mouseover', () => tooltipObject.style('visibility', 'visible'))
     .on('mousemove', setTooltipValue)
-    .on('mouseout', () => tooltip.style('visibility', 'hidden'))
+    .on('mouseout', () => tooltipObject.style('visibility', 'hidden'))
     .on('click', handleDotClick);
 
-  const tooltip = Scatter.setTooltip({});
+  const tooltipObject = GraphMaker.setTooltip({});
 
   // Slider
   const sliderWrap = addElementUnder('div', {}, {}, 'confirmed-deaths-slider-wrap', 'confirmed-deaths');
