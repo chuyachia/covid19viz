@@ -28,7 +28,7 @@ export const DeathsConfirmedGraph = async function () {
   const setSliderLabel = (data) => {
     const date = new Date(data.Date);
     sliderLabel.innerHTML = `
-      <div>${data.Country} in ${date.toLocaleDateString()}</div>
+      <p>${data.Country} in ${date.toLocaleDateString()}</p>
       ${getDeathsConfirmedText(data)}`
   }
   const updateGraph = (data) => {
@@ -120,8 +120,12 @@ export const DeathsConfirmedGraph = async function () {
   }
 
   // Base graph
-  const graphTitle = addElementUnder('h2', { class: 'graph-title' }, {}, 'confirmed-deaths-graph-title', 'confirmed-deaths');
+  const graphWrap = addElementUnder('div', { class: 'graph-wrap' }, {}, 'confirmed-deaths');
+  const graphDetails = addElementUnder('details', { class: 'graph-details' }, {}, '', graphWrap);
+  const graphTitle = addElementUnder('summary', { class: 'graph-title' }, {}, '', graphDetails);
   graphTitle.innerHTML = 'Total Deaths - Total Confirmed Cases';
+  const graphExplains= addElementUnder('p', {class: 'graph-explains' }, {}, '', graphDetails);
+  graphExplains.innerHTML = 'Evolution of the total number of confirmed cases and deaths of a country in time';
   const GraphMaker =  Object.assign(
     {},
     dot(),
@@ -164,21 +168,21 @@ export const DeathsConfirmedGraph = async function () {
   const tooltipObject = GraphMaker.setTooltip({});
 
   // Slider
-  const sliderWrap = addElementUnder('div', {}, {}, 'confirmed-deaths-slider-wrap', 'confirmed-deaths');
+  const sliderWrap = addElementUnder('div', {class: 'graph-control'}, {}, '', graphWrap);
   const sliderLabel = addElementUnder(
     'div',
-    { class: 'input-label' },
     {},
-    'confirmed-deaths-slider-text',
-    'confirmed-deaths-slider-wrap'
+    {},
+    '',
+    sliderWrap
   );
 
   const slider = addElementUnder(
     'input',
     { type: 'range', min: 0 },
     { visibility: 'hidden' },
-    'confirmed-deaths-slider',
-    'confirmed-deaths-slider-wrap'
+    '',
+    sliderWrap
   );
 
   slider.oninput = function () {

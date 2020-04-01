@@ -6,16 +6,14 @@ export const canvas = () => {
   let canvasHeight;
 
   return {
-    setCanvas: function(width, height, id) {
+    setCanvas: function(width, height, parentId) {
       if (typeof width !== 'number') throw new TypeError('Width must be a number');
       if (typeof height !== 'number') throw new TypeError('Height must be a number');
 
       const margin = this.getMargin ? this.getMargin() : { top: 0, bottom: 0, left: 0, right: 0 };
-      svg = select('body')
-        .append('div')
-        .attr('id', id)
-        .attr('class', 'graph-wrap')
+      svg = select(`#${parentId}`) 
         .append('svg')
+        .attr('class', 'graph')
         .attr('width', width)
         .attr('height', height)
         .append('g')

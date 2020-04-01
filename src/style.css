@@ -5,8 +5,32 @@ body {
 }
 .graph-wrap {
   display: flex;
+  flex-flow: row wrap;
 }
+
+.graph-details {
+  flex: 1 0 100%;
+  order: 1;
+}
+
+.graph {
+  order: 2;
+}
+
+.graph-control {
+  order: 3;
+}
+
 .graph-title {
+  text-align: center;
+  font-weight: bolder;
+  font-size: 1.2em;
+  margin-bottom: 15px;
+  cursor: pointer;
+}
+
+.graph-explains {
+  font-size: small;
   text-align: center;
 }
 
@@ -27,6 +51,7 @@ body {
   cursor: pointer;
 }
 
-#after-100days .line:not(.highlighted) {
+#after-100days .line:not(.highlighted),
+#after-100days circle {
   cursor: pointer;
 }

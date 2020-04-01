@@ -1,4 +1,4 @@
-export function addElementUnder(element, props, style, elementId, parentId) {
+export function addElementUnder(element, props, style, elementId, parentElement) {
   const newElement = document.createElement(element);
   if (elementId && elementId.length > 0) {
     newElement.setAttribute('id',elementId);
@@ -11,11 +11,10 @@ export function addElementUnder(element, props, style, elementId, parentId) {
     newElement.style[s] = style[s];
   }
 
-  let parent = document.getElementById(parentId);
-  if (!parent) {
-    parent =  document.body;
+  if (!parentElement) {
+    parentElement =  document.body;
   }
-  parent.appendChild(newElement);
+  parentElement.appendChild(newElement);
 
   return newElement;
 }
