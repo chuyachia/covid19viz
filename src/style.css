@@ -3,6 +3,13 @@ body {
   padding-left: 15px;
   padding-right: 15px;
 }
+
+footer {
+  position: fixed;
+  bottom: 5px;
+  right: 5px;
+}
+
 .graph-wrap {
   display: flex;
   flex-flow: row wrap;

@@ -1,5 +1,4 @@
 import {line as d3Line} from 'd3-shape';
-import { style } from 'd3';
 
 export const line = () => {
   return {

@@ -23,6 +23,7 @@ export const After100Cases = async function() {
   const highlightWidth = 4;
   const initialSelectedCountries = ['italy', 'us'];
   let selectedCountries = [];
+  let selectedCountriesSet = new Set();
   let groupedData = [];
   let maxX = 0;  
   let currentYProp = 'TotalConfirmed';
@@ -42,6 +43,7 @@ export const After100Cases = async function() {
     if (filteredData.length > 0) {
       groupedData.push(filteredData);
       selectedCountries.push(countryCode);
+      selectedCountriesSet.add(countryCode);
       if (filteredData.length > maxX) {
         maxX = filteredData.length;
       }
@@ -85,7 +87,7 @@ export const After100Cases = async function() {
   const graphTitle = addElementUnder('summary', { class: 'graph-title' }, {}, '', graphDetails);
   graphTitle.innerHTML = 'Trajectory After 100 Cases';
   const graphExplains= addElementUnder('p', {class: 'graph-explains' }, {}, '', graphDetails);
-  graphExplains.innerHTML = 'Growth of the total number of confirmed cases and deaths starting from the day when the country recorded more than 100 confirmed cases';
+  graphExplains.innerHTML = 'Growth trajectories of confirmed cases and deaths since more than 100 cases recorded';
 
   const handleMouseOver = function() {
     select(this).attr('stroke-width', highlightWidth);
@@ -176,7 +178,7 @@ export const After100Cases = async function() {
         .style('left', event.pageX + 'px')
         .html(getDotTooltipText(d, i))
       removeLinesToAxis();
-      addLinesToAxis(d,i);
+      addLinesToAxis(d, i);
     }).on('mouseout', function () {
       tooltipObject.style('visibility', 'hidden')
         .html('');
@@ -185,8 +187,8 @@ export const After100Cases = async function() {
       if (i > 0) {
         let earliestNonZero = 0;
         let data0 = select(allData[earliestNonZero]).data()[0][currentYProp];
-        while(data0 === 0 && earliestNonZero < i) {
-          earliestNonZero ++;
+        while (data0 === 0 && earliestNonZero < i) {
+          earliestNonZero++;
           data0 = select(allData[earliestNonZero]).data()[0][currentYProp];
         }
 
@@ -395,11 +397,12 @@ export const After100Cases = async function() {
       } else {
         if (groupedData.length > 1) {
           selectedCountries = [...selectedCountries.slice(0, existingIndex), ...selectedCountries.slice(existingIndex + 1)]
+          selectedCountriesSet.delete(countryCode);
           groupedData = [...groupedData.slice(0, existingIndex), ...groupedData.slice(existingIndex + 1)];
-          while (!selectedCountries.includes(maxTotalConfirmed.peek()) && maxTotalConfirmed.length > 0) {
+          while (!selectedCountriesSet.has(maxTotalConfirmed.peek()) && maxTotalConfirmed.length > 0) {
             maxTotalConfirmed.pop();
           }
-          while (!selectedCountries.includes(maxTotalDeaths.peek()) && maxTotalDeaths.length > 0) {
+          while (!selectedCountriesSet.has(maxTotalDeaths.peek()) && maxTotalDeaths.length > 0) {
             maxTotalDeaths.pop();
           }
         }

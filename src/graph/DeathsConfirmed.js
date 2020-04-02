@@ -125,7 +125,7 @@ export const DeathsConfirmedGraph = async function () {
   const graphTitle = addElementUnder('summary', { class: 'graph-title' }, {}, '', graphDetails);
   graphTitle.innerHTML = 'Total Deaths - Total Confirmed Cases';
   const graphExplains= addElementUnder('p', {class: 'graph-explains' }, {}, '', graphDetails);
-  graphExplains.innerHTML = 'Evolution of the total number of confirmed cases and deaths of a country in time';
+  graphExplains.innerHTML = 'Evolution of confirmed cases and deaths in time';
   const GraphMaker =  Object.assign(
     {},
     dot(),
