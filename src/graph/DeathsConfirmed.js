@@ -1,4 +1,4 @@
-import {select} from 'd3-selection';
+import {select, selectAll} from 'd3-selection';
 import {max} from 'd3-array';
 
 import {margin} from '../mixin/margin';
@@ -8,10 +8,11 @@ import {xAxis} from'../mixin/xAxis';
 import {yAxis} from'../mixin/yAxis';
 import {dot} from '../mixin/dot';
 import {tooltip} from '../mixin/tooltip';
-import {fetchSummaryData, fetchHistoricalData} from '../api';
+import {fetchSummaryData, fetchHistoricalData,fetchCountriesList} from '../api';
 import {addElementUnder} from '../util';
 
 export const DeathsConfirmedGraph = async function () {
+  const countriesList = await fetchCountriesList();
   const defaultColor = '#20B2AA';
   const hightLightColor = 'orange';
   let summaryData = await fetchSummaryData();
@@ -27,7 +28,7 @@ export const DeathsConfirmedGraph = async function () {
 
   const setSliderLabel = (data) => {
     const date = new Date(data.Date);
-    sliderLabel.innerHTML = `
+    infoBox.innerHTML = `
       <p>${data.Country} in ${date.toLocaleDateString()}</p>
       ${getDeathsConfirmedText(data)}`
   }
@@ -143,7 +144,7 @@ export const DeathsConfirmedGraph = async function () {
     removeLinesToAxis();
     updateGraph(summaryData);
     slider.style.visibility = 'hidden';
-    sliderLabel.innerHTML = '';
+    infoBox.innerHTML = '';
     currentFocusedIndex = -1;
   })
   const xScale = GraphMaker.getLogScale(0, max(summaryData, getTotalDeaths), 0, GraphMaker.getCanvasWidth(), 10);
@@ -167,22 +168,39 @@ export const DeathsConfirmedGraph = async function () {
 
   const tooltipObject = GraphMaker.setTooltip({});
 
-  // Slider
-  const sliderWrap = addElementUnder('div', {class: 'graph-control'}, {}, '', graphWrap);
-  const sliderLabel = addElementUnder(
-    'div',
-    {},
-    {},
-    '',
-    sliderWrap
-  );
+  const graphControlPenal = addElementUnder('div', {class: 'graph-control'}, {}, '', graphWrap);
 
+  // Country select
+  const countrySelectWrap = addElementUnder('div', {}, {}, '', graphControlPenal);
+  const countrySelectLabel = addElementUnder('div', {class: 'input-label' }, {}, '', countrySelectWrap);
+  countrySelectLabel.innerHTML = 'Select a Country';
+  const countryDataList = addElementUnder('datalist', {}, {}, 'countries-data-list', countrySelectWrap);
+  countriesList.forEach(countryData => {
+    const option = addElementUnder('option', {value: countryData.Slug}, {}, '', countryDataList);
+    option.innerHTML = countryData.Country;
+  })
+  const countrySelectInput = addElementUnder('input', {list:'countries-data-list'}, {}, '', countrySelectWrap);
+  countrySelectInput.onkeydown = function (event) {
+    if (event.key === 'Enter') {
+      const countryCode = event.target.value;
+      const existingIndex = summaryData.findIndex(d => d.Slug === countryCode);
+      if (existingIndex !== -1) {
+        const selectedDot = dots.filter((d,i)=> i === existingIndex).node();
+        handleDotClick.call(selectedDot, summaryData[existingIndex], existingIndex);
+        countrySelectInput.value = '';
+      } else {
+        alert('No data found for selected country');
+      }
+    }
+  }
+
+  // Slider
   const slider = addElementUnder(
     'input',
     { type: 'range', min: 0 },
     { visibility: 'hidden' },
     '',
-    sliderWrap
+    graphControlPenal
   );
 
   slider.oninput = function () {
@@ -192,4 +210,14 @@ export const DeathsConfirmedGraph = async function () {
     removeLinesToAxis();
     addLinesToAxis(newData);
   }
+
+  // Cases number info
+  const infoBox = addElementUnder(
+    'div',
+    {class:'info-box'},
+    {},
+    '',
+    graphControlPenal
+  );
+
 };

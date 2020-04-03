@@ -56,7 +56,7 @@ export const line = () => {
               const lastData = d.length > 0 ? d[d.length - 1] : undefined;
               return lastData ? yScale(lastData[y]) : 0
             })
-            .style('fill', color)
+            // .style('fill', color)
             .text(function (d) { return d[d.length - 1][label] }),
         );
 

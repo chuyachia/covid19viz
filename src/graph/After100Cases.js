@@ -23,6 +23,7 @@ export const After100Cases = async function() {
   const highlightWidth = 4;
   const initialSelectedCountries = ['italy', 'us'];
   let selectedCountries = [];
+  let currentSelectedData = [];
   let selectedCountriesSet = new Set();
   let groupedData = [];
   let maxX = 0;  
@@ -55,40 +56,6 @@ export const After100Cases = async function() {
     }
   }
 
-  for (let i in initialSelectedCountries) {
-    const countryCode = initialSelectedCountries[i];
-    let data = [];
-    try {
-      data = await fetchHistoricalData(countryCode);
-      filterAndGroupData(data, countryCode);
-    } catch(e) {
-      console.error(e);
-    }
-  }
-
-  const graphWrap = addElementUnder('div', { class: 'graph-wrap' }, {}, 'after-100days');
-  const GraphMaker = Object.assign(
-    {},
-    line(),
-    canvas(),
-    margin(),
-    xAxis(), 
-    yAxis(),
-    linearScale(),
-    logScale(),
-    tooltip(),
-    dot(),
-  )
-  GraphMaker.setMargin({ top: 10, right: 30, bottom: 80, left: 80 });
-  const graph = GraphMaker.setCanvas(800, 600, 'after-100days');
-  let xScale, xAxisObject, yScale, yAxisObject, lines, texts;
-  const tooltipObject = GraphMaker.setTooltip({});
-  const graphDetails = addElementUnder('details', { class: 'graph-details' }, {}, '', graphWrap);
-  const graphTitle = addElementUnder('summary', { class: 'graph-title' }, {}, '', graphDetails);
-  graphTitle.innerHTML = 'Trajectory After 100 Cases';
-  const graphExplains= addElementUnder('p', {class: 'graph-explains' }, {}, '', graphDetails);
-  graphExplains.innerHTML = 'Growth trajectories of confirmed cases and deaths since more than 100 cases recorded';
-
   const handleMouseOver = function() {
     select(this).attr('stroke-width', highlightWidth);
   }
@@ -117,13 +84,13 @@ export const After100Cases = async function() {
   }
 
   const removeLinesToAxis = () => {
-    graph.selectAll('line.highlight-line').remove();
+    graph.selectAll('line.line-to-axis').remove();
   }
 
   const addLinesToAxis = (d, i) => {
     graph
       .append('line')
-      .attr('class', 'highlight-line')
+      .attr('class', 'line-to-axis')
       .style('stroke', 'grey')
       .style('stroke-dasharray', ('2, 3'))
       .attr('x1', 0)
@@ -132,7 +99,7 @@ export const After100Cases = async function() {
       .attr('y2', yScale(d[currentYProp]));
 
     graph.append('line')
-      .attr('class', 'highlight-line')
+      .attr('class', 'line-to-axis')
       .style('stroke', 'grey')
       .style('stroke-dasharray', ('2, 3'))
       .attr('x1', 0)
@@ -152,6 +119,7 @@ export const After100Cases = async function() {
 
   const handleClick = function (d, i) {
     event.stopPropagation();
+    currentSelectedData = d;
     removeLineHighlight();
     removeLinesToAxis();
     select(this)
@@ -163,8 +131,8 @@ export const After100Cases = async function() {
     const labelNodes = texts.nodes();
     select(labelNodes[i]).style('fill','black');
 
-    const dots = GraphMaker.drawDots({
-      data: d,
+    let dots = GraphMaker.drawDots({
+      data: currentSelectedData,
       y:  currentYProp,
       xScale,
       yScale,
@@ -186,21 +154,22 @@ export const After100Cases = async function() {
       event.stopPropagation();
       if (i > 0) {
         let earliestNonZero = 0;
-        let data0 = select(allData[earliestNonZero]).data()[0][currentYProp];
-        while (data0 === 0 && earliestNonZero < i) {
+        let firstValue = select(allData[earliestNonZero]).data()[0][currentYProp];
+        while (firstValue === 0 && earliestNonZero < i) {
           earliestNonZero++;
-          data0 = select(allData[earliestNonZero]).data()[0][currentYProp];
+         firstValue = select(allData[earliestNonZero]).data()[0][currentYProp];
         }
 
-        const data1 = select(allData[i-1]).data()[0][currentYProp];
-        const data2 = select(allData[i]).data()[0][currentYProp];
-        const latestGrowth = computeAverageGrowth(data1, data2, 1);
-        const averageGrowth = computeAverageGrowth(data0, data2, i - earliestNonZero);
+        const currentData = select(allData[i]).data()[0];
+        const currentValue = currentData[currentYProp];
+        const previousValue = select(allData[i-1]).data()[0][currentYProp];
+        const latestGrowth = computeAverageGrowth(previousValue, currentValue, 1);
+        const averageGrowth = computeAverageGrowth(firstValue, currentValue, i - earliestNonZero);
         const formatedLatestGrowth = latestGrowth.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '%';
         const formatedAverageGrowth = averageGrowth.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '%'; 
-        growthRateText.innerHTML = `<p>Day ${i}</p>${getGrowthRateText(formatedLatestGrowth, formatedAverageGrowth)}`;
+        growthRateText.innerHTML = `<p>${currentData.Country} Day ${i}</p>${getGrowthRateText(formatedLatestGrowth, formatedAverageGrowth)}`;
       } else {
-        growthRateText.innerHTML = `<p>Day ${i}</p>${getGrowthRateText(NaN, NaN)}`;
+        growthRateText.innerHTML = `<p>${currentData.Country} Day ${i}</p>${getGrowthRateText(NaN, NaN)}`;
       }
     });
   }
@@ -208,17 +177,26 @@ export const After100Cases = async function() {
   const clearSelected = () => {
     removeLineHighlight();
     removeLinesToAxis();
+    currentSelectedData = [];
     GraphMaker.drawDots({
-      data: [],
+      data: currentSelectedData,
       y: currentYProp,
       xScale,
       yScale,
     });
   }
-  
-  select('#after-100days > svg').on('click', function () {
-    clearSelected();
-  })
+
+  // Get initial data
+  for (let i in initialSelectedCountries) {
+    const countryCode = initialSelectedCountries[i];
+    let data = [];
+    try {
+      data = await fetchHistoricalData(countryCode);
+      filterAndGroupData(data, countryCode);
+    } catch(e) {
+      console.error(e);
+    }
+  }
 
   const updateGraph = () => {
     xScale = GraphMaker.getLinearScale(0, maxX + 2, 0, GraphMaker.getCanvasWidth());
@@ -267,115 +245,50 @@ export const After100Cases = async function() {
     lines.on('mouseover', handleMouseOver)
       .on('mouseout', handleMouseOut)
       .on('click', handleClick);
+
+    GraphMaker.drawDots({
+      data: currentSelectedData,
+      y: currentYProp,
+      xScale,
+      yScale,
+      size: 5,
+      color: highlightColor,
+    });
   }
 
+  // Base graph
+  const graphWrap = addElementUnder('div', { class: 'graph-wrap' }, {}, 'after-100days');
+  const GraphMaker = Object.assign(
+    {},
+    line(),
+    canvas(),
+    margin(),
+    xAxis(), 
+    yAxis(),
+    linearScale(),
+    logScale(),
+    tooltip(),
+    dot(),
+  )
+  GraphMaker.setMargin({ top: 10, right: 30, bottom: 80, left: 80 });
+  const graph = GraphMaker.setCanvas(800, 600, 'after-100days');
+  let xScale, xAxisObject, yScale, yAxisObject, lines, texts;
+  const tooltipObject = GraphMaker.setTooltip({});
+  const graphDetails = addElementUnder('details', { class: 'graph-details' }, {}, '', graphWrap);
+  const graphTitle = addElementUnder('summary', { class: 'graph-title' }, {}, '', graphDetails);
+  graphTitle.innerHTML = 'Trajectory After 100 Cases';
+  const graphExplains= addElementUnder('p', {class: 'graph-explains' }, {}, '', graphDetails);
+  graphExplains.innerHTML = 'Growth trajectories of confirmed cases and deaths since more than 100 cases recorded';
   updateGraph();
+  select('#after-100days > svg').on('click', function () {
+    clearSelected();
+  })
 
   const graphControlPenal = addElementUnder('div', {class: 'graph-control'}, {}, '', graphWrap);
-  const yValueRadioButtons = [
-    { value: 'confirmed', checked: true, label: 'Total Confirmed Cases' },
-    { value: 'deaths', checked: false, label: 'Total Deaths' }
-  ];
-  const yValueRadioInputWrap = addElementUnder('div', {}, {}, 'y-value-radio-input-wrap', graphControlPenal);
-  const yValueradioInputLabel = addElementUnder('div', {class: 'input-label' }, {}, '', yValueRadioInputWrap);
-  yValueradioInputLabel.innerHTML = 'Y Axis Value'
-  yValueRadioButtons.forEach(button => {
-    const props = { type: 'radio', value: button.value, name: 'y-axis-value' };
-    if (button.checked) {
-      props.checked = true;
-    }
-    addElementUnder('input', props, {}, '', yValueRadioInputWrap);
-    let label = addElementUnder('label', {}, {}, '', yValueRadioInputWrap);
-    label.innerHTML = button.label;
-  })
 
-  yValueRadioInputWrap.oninput = function(event) {
-    clearSelected();
-    let yAxisLabel;
-    let maxY;
-    if (event.target.value === 'deaths') {
-      currentYProp = 'TotalDeaths';
-      yAxisLabel = 'Total Deaths';
-      maxY = - maxTotalDeaths.peekValue();
-    } else if (event.target.value === 'confirmed') {
-      currentYProp = 'TotalConfirmed';
-      yAxisLabel = 'Total Confirmed Cases';
-      maxY = - maxTotalConfirmed.peekValue();
-    }
-    if (currentYScale === 'linear') {
-      yScale = GraphMaker.getLinearScale(0, maxY + (maxY / 10), GraphMaker.getCanvasHeight(), 0);
-      GraphMaker.updateYAxis({ scale: yScale, label: yAxisLabel });
-    } else {
-      yScale = GraphMaker.getLogScale(0, maxY + (maxY / 10), GraphMaker.getCanvasHeight(), 0, 10**3);
-      GraphMaker.updateYAxis({ scale: yScale, label: yAxisLabel });
-    }
-    lines = GraphMaker.drawLines({
-      data: groupedData,
-      y: currentYProp,
-      xScale,
-      yScale,
-      color: defaultColor,
-      size: defaultWidth,
-    });
-    texts = GraphMaker.drawLinesLabel({
-      data: groupedData,
-      y: currentYProp,
-      label: 'Country',
-      xScale,
-      yScale,
-      color: defaultColor,
-    })
-  }
-
-  const yScaleRadioButtons = [
-    { value: 'linear', checked: true, label: 'Linear Scale' },
-    { value: 'log', checked: false, label: 'Log Scale' }
-  ];
-  const yScaleRadioInputWrap = addElementUnder('div', {}, {}, 'y-scale-radio-input-wrap', graphControlPenal);
-  const yScaleRadioInputLabel = addElementUnder('div', {class: 'input-label' }, {}, '', yScaleRadioInputWrap);
-  yScaleRadioInputLabel.innerHTML = 'Y Axis Scale'
-  yScaleRadioButtons.forEach(button => {
-    const props = { type: 'radio', value: button.value, name: 'y-axis-scale' };
-    if (button.checked) {
-      props.checked = true;
-    }
-    addElementUnder('input', props, {}, '', yScaleRadioInputWrap);
-    let label = addElementUnder('label', {}, {}, '', yScaleRadioInputWrap);
-    label.innerHTML = button.label;
-  })
-  yScaleRadioInputWrap.oninput = function(event) {
-    clearSelected();
-    currentYScale = event.target.value;
-    let maxY = currentYProp === 'TotalDeaths' ? - maxTotalDeaths.peekValue() : -maxTotalConfirmed.peekValue();
-    if (currentYScale === 'linear') {
-      yScale = GraphMaker.getLinearScale(0, maxY + (maxY/ 10), GraphMaker.getCanvasHeight(), 0);
-      GraphMaker.updateYAxis({ scale: yScale});
-    } else {
-      yScale = GraphMaker.getLogScale(0, maxY + (maxY / 10), GraphMaker.getCanvasHeight(), 0, 10 ** 3);
-      GraphMaker.updateYAxis({ scale: yScale });
-    }
-
-    GraphMaker.updateYAxis({ scale: yScale });
-    lines = GraphMaker.drawLines({
-      data: groupedData,
-      y: currentYProp,
-      xScale,
-      yScale,
-      color: defaultColor,
-      size: defaultWidth,
-    });
-    texts = GraphMaker.drawLinesLabel({
-      data: groupedData,
-      y: currentYProp,
-      label: 'Country',
-      xScale,
-      yScale,
-      color: defaultColor,
-    })
-  }
-
+  // Countries select
   const countriesSelectLabel = addElementUnder('div', {class: 'input-label' }, {}, '', graphControlPenal);
-  countriesSelectLabel.innerHTML = 'Add/Remove Country';
+  countriesSelectLabel.innerHTML = 'Add or Remove a Country';
   const countryDataList = addElementUnder('datalist', {}, {}, 'countries-data-list', graphControlPenal);
   countriesList.forEach(countryData => {
     const option = addElementUnder('option', {value: countryData.Slug}, {}, '', countryDataList);
@@ -408,10 +321,85 @@ export const After100Cases = async function() {
         }
       }
       countriesSelectInput.value = '';
+      removeLinesToAxis();
       updateGraph();
     }
   }
 
-  const growthRateText = addElementUnder('div', {}, {}, '', graphControlPenal);
+  // Y value select
+  const yValueRadioButtons = [
+    { value: 'confirmed', checked: true, label: 'Total Confirmed Cases' },
+    { value: 'deaths', checked: false, label: 'Total Deaths' }
+  ];
+  const yValueRadioInputWrap = addElementUnder('div', {}, {}, 'y-value-radio-input-wrap', graphControlPenal);
+  const yValueradioInputLabel = addElementUnder('div', {class: 'input-label' }, {}, '', yValueRadioInputWrap);
+  yValueradioInputLabel.innerHTML = 'Y Axis Value'
+  yValueRadioButtons.forEach(button => {
+    const props = { type: 'radio', value: button.value, name: 'y-axis-value' };
+    if (button.checked) {
+      props.checked = true;
+    }
+    addElementUnder('input', props, {}, '', yValueRadioInputWrap);
+    let label = addElementUnder('label', {}, {}, '', yValueRadioInputWrap);
+    label.innerHTML = button.label;
+  })
+
+  // Y scale select
+  yValueRadioInputWrap.oninput = function(event) {
+    let yAxisLabel;
+    let maxY;
+    if (event.target.value === 'deaths') {
+      currentYProp = 'TotalDeaths';
+      yAxisLabel = 'Total Deaths';
+      maxY = - maxTotalDeaths.peekValue();
+    } else if (event.target.value === 'confirmed') {
+      currentYProp = 'TotalConfirmed';
+      yAxisLabel = 'Total Confirmed Cases';
+      maxY = - maxTotalConfirmed.peekValue();
+    }
+    if (currentYScale === 'linear') {
+      yScale = GraphMaker.getLinearScale(0, maxY + (maxY / 10), GraphMaker.getCanvasHeight(), 0);
+      GraphMaker.updateYAxis({ scale: yScale, label: yAxisLabel });
+    } else {
+      yScale = GraphMaker.getLogScale(0, maxY + (maxY / 10), GraphMaker.getCanvasHeight(), 0, 10**3);
+      GraphMaker.updateYAxis({ scale: yScale, label: yAxisLabel });
+    }
+    removeLinesToAxis();
+    updateGraph();
+  }
+
+  const yScaleRadioButtons = [
+    { value: 'linear', checked: true, label: 'Linear Scale' },
+    { value: 'log', checked: false, label: 'Log Scale' }
+  ];
+  const yScaleRadioInputWrap = addElementUnder('div', {}, {}, 'y-scale-radio-input-wrap', graphControlPenal);
+  const yScaleRadioInputLabel = addElementUnder('div', {class: 'input-label' }, {}, '', yScaleRadioInputWrap);
+  yScaleRadioInputLabel.innerHTML = 'Y Axis Scale'
+  yScaleRadioButtons.forEach(button => {
+    const props = { type: 'radio', value: button.value, name: 'y-axis-scale' };
+    if (button.checked) {
+      props.checked = true;
+    }
+    addElementUnder('input', props, {}, '', yScaleRadioInputWrap);
+    let label = addElementUnder('label', {}, {}, '', yScaleRadioInputWrap);
+    label.innerHTML = button.label;
+  })
+
+  yScaleRadioInputWrap.oninput = function(event) {
+    currentYScale = event.target.value;
+    let maxY = currentYProp === 'TotalDeaths' ? - maxTotalDeaths.peekValue() : -maxTotalConfirmed.peekValue();
+    if (currentYScale === 'linear') {
+      yScale = GraphMaker.getLinearScale(0, maxY + (maxY/ 10), GraphMaker.getCanvasHeight(), 0);
+      GraphMaker.updateYAxis({ scale: yScale});
+    } else {
+      yScale = GraphMaker.getLogScale(0, maxY + (maxY / 10), GraphMaker.getCanvasHeight(), 0, 10 ** 3);
+      GraphMaker.updateYAxis({ scale: yScale });
+    }
+    removeLinesToAxis();
+    updateGraph();
+  }
+
+  // Text info
+  const growthRateText = addElementUnder('div', {class: 'info-box'}, {}, '', graphControlPenal);
 
 }

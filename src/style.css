@@ -41,6 +41,17 @@ footer {
   text-align: center;
 }
 
+.info-box {
+  margin-top: 15px;
+  margin-bottom: 15px;
+  background: #f2f2f2;
+  padding: 5px 15px 5px 15px;
+}
+
+.info-box:empty {
+  padding: 0px;
+}
+
 .input-label {
   font-weight: bolder;
 }
