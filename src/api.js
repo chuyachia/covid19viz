@@ -35,7 +35,7 @@ export async function fetchHistoricalData(countryCode) {
   const combined = [];
   for (let i = 0;i < confirmed.length ; i++) {
     let c = confirmed[i];
-    const data = { Date: c.Date, Country: c.Country, TotalConfirmed: c.Cases };
+    const data = { Date: c.Date, Country: c.Country, TotalConfirmed: c.Cases, Slug: countryCode };
     let d = deaths[i];
     if (d.Date === c.Date) {
       data.TotalDeaths = d.Cases;

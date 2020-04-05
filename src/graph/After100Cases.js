@@ -3,7 +3,7 @@ import {select} from 'd3-selection';
 import {addElementUnder} from '../util';
 import { fetchHistoricalData, fetchCountriesList } from '../api';
 import {margin} from '../mixin/margin';
-import {canvas} from '../mixin/canvas';
+import {baseGraph} from '../mixin/baseGraph';
 import {linearScale} from'../mixin/linearScale';
 import {xAxis} from'../mixin/xAxis';
 import {yAxis} from'../mixin/yAxis';
@@ -24,11 +24,13 @@ export const After100Cases = async function() {
   const initialSelectedCountries = ['italy', 'us'];
   let selectedCountries = [];
   let currentSelectedData = [];
+  let currentSelectedIndex = -1;
   let selectedCountriesSet = new Set();
   let groupedData = [];
   let maxX = 0;  
   let currentYProp = 'TotalConfirmed';
   let currentYScale = 'linear';
+  let xScale, xAxisObject, yScale, yAxisObject, lines, texts;
 
   const filterAndGroupData = (data, countryCode) => {
     if (data.length === 0) {
@@ -84,42 +86,69 @@ export const After100Cases = async function() {
   }
 
   const removeLinesToAxis = () => {
-    graph.selectAll('line.line-to-axis').remove();
+    GraphMaker.removeLineToXAxis();
+    GraphMaker.removeLineToYAxis();
   }
 
   const addLinesToAxis = (d, i) => {
-    graph
-      .append('line')
-      .attr('class', 'line-to-axis')
-      .style('stroke', 'grey')
-      .style('stroke-dasharray', ('2, 3'))
-      .attr('x1', 0)
-      .attr('y1', yScale(d[currentYProp]))
-      .attr('x2', GraphMaker.getCanvasWidth)
-      .attr('y2', yScale(d[currentYProp]));
-
-    graph.append('line')
-      .attr('class', 'line-to-axis')
-      .style('stroke', 'grey')
-      .style('stroke-dasharray', ('2, 3'))
-      .attr('x1', 0)
-      .attr('x1', xScale(i))
-      .attr('y1', 0)
-      .attr('x2', xScale(i))
-      .attr('y2', GraphMaker.getCanvasHeight);
+    GraphMaker.drawLineToYAxis({scale: yScale, y:d[currentYProp]});
+    GraphMaker.drawLineToXAxis({ scale: xScale, x: i });
   }
 
   const computeAverageGrowth = (d1, d2, period) => {
     return (((d2 / d1) ** (1 / period)) - 1 ) * 100;
   }
 
-  const getGrowthRateText = (latestGrowth, averageGrowth) => (`
+  const getGrowthRateText = (latestDifference, latestGrowth, averageGrowth) => (`
+      <div class='space-between-text'><span>Difference From Previous day</span><span>${latestDifference}</span></div>
       <div class='space-between-text'><span>Growth From Previous day</span><span>${latestGrowth}</span></div>
       <div class='space-between-text'><span>Average Growth</span><span>${averageGrowth}</span></div>`);
+
+  const handleDotMouseover = (d, i) => {
+    tooltipObject.style('visibility', 'visible');
+  }
+
+  const handleDotMousemove = function (d, i) {
+    tooltipObject.style('top', (event.pageY + 30) + 'px')
+      .style('left', event.pageX + 'px')
+      .html(getDotTooltipText(d, i))
+  }
+
+  const handleDotMouseout = function () {
+    tooltipObject.style('visibility', 'hidden')
+      .html('');
+  }
+
+  const handleDotMouseclick = function (d, i, allData) {
+    event.stopPropagation();
+    removeLinesToAxis();
+    addLinesToAxis(d, i);
+    if (i > 0) {
+      let earliestNonZero = 0;
+      let firstValue = select(allData[earliestNonZero]).data()[0][currentYProp];
+      while (firstValue === 0 && earliestNonZero < i) {
+        earliestNonZero++;
+        firstValue = select(allData[earliestNonZero]).data()[0][currentYProp];
+      }
+
+      const currentData = select(allData[i]).data()[0];
+      const currentValue = currentData[currentYProp];
+      const previousValue = select(allData[i - 1]).data()[0][currentYProp];
+      const latestGrowth = computeAverageGrowth(previousValue, currentValue, 1);
+      const averageGrowth = computeAverageGrowth(firstValue, currentValue, i - earliestNonZero);
+      const formatedLatestDifferente = (currentValue - previousValue).toLocaleString();
+      const formatedLatestGrowth = latestGrowth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+      const formatedAverageGrowth = averageGrowth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+      growthRateText.innerHTML = `<p>${currentData.Country} Day ${i}</p>${getGrowthRateText(formatedLatestDifferente, formatedLatestGrowth, formatedAverageGrowth)}`;
+    } else {
+      growthRateText.innerHTML = `<p>${currentData.Country} Day ${i}</p>${getGrowthRateText(0, NaN, NaN)}`;
+    }
+  }
 
   const handleClick = function (d, i) {
     event.stopPropagation();
     currentSelectedData = d;
+    currentSelectedIndex = i;
     removeLineHighlight();
     removeLinesToAxis();
     select(this)
@@ -139,45 +168,18 @@ export const After100Cases = async function() {
       size: 5,
       color: highlightColor,
     });
-    dots.on('mouseover', function () {
-      tooltipObject.style('visibility', 'visible');
-    }).on('mousemove', function (d, i) {
-      tooltipObject.style('top', (event.pageY + 30) + 'px')
-        .style('left', event.pageX + 'px')
-        .html(getDotTooltipText(d, i))
-      removeLinesToAxis();
-      addLinesToAxis(d, i);
-    }).on('mouseout', function () {
-      tooltipObject.style('visibility', 'hidden')
-        .html('');
-    }).on('click', function(d, i, allData) {
-      event.stopPropagation();
-      if (i > 0) {
-        let earliestNonZero = 0;
-        let firstValue = select(allData[earliestNonZero]).data()[0][currentYProp];
-        while (firstValue === 0 && earliestNonZero < i) {
-          earliestNonZero++;
-         firstValue = select(allData[earliestNonZero]).data()[0][currentYProp];
-        }
 
-        const currentData = select(allData[i]).data()[0];
-        const currentValue = currentData[currentYProp];
-        const previousValue = select(allData[i-1]).data()[0][currentYProp];
-        const latestGrowth = computeAverageGrowth(previousValue, currentValue, 1);
-        const averageGrowth = computeAverageGrowth(firstValue, currentValue, i - earliestNonZero);
-        const formatedLatestGrowth = latestGrowth.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '%';
-        const formatedAverageGrowth = averageGrowth.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '%'; 
-        growthRateText.innerHTML = `<p>${currentData.Country} Day ${i}</p>${getGrowthRateText(formatedLatestGrowth, formatedAverageGrowth)}`;
-      } else {
-        growthRateText.innerHTML = `<p>${currentData.Country} Day ${i}</p>${getGrowthRateText(NaN, NaN)}`;
-      }
-    });
+    dots.on('mouseover', handleDotMouseover)
+      .on('mousemove', handleDotMousemove)
+      .on('mouseout', handleDotMouseout)
+      .on('click', handleDotMouseclick);
   }
 
   const clearSelected = () => {
     removeLineHighlight();
     removeLinesToAxis();
     currentSelectedData = [];
+    currentSelectedIndex = -1;
     GraphMaker.drawDots({
       data: currentSelectedData,
       y: currentYProp,
@@ -186,20 +188,8 @@ export const After100Cases = async function() {
     });
   }
 
-  // Get initial data
-  for (let i in initialSelectedCountries) {
-    const countryCode = initialSelectedCountries[i];
-    let data = [];
-    try {
-      data = await fetchHistoricalData(countryCode);
-      filterAndGroupData(data, countryCode);
-    } catch(e) {
-      console.error(e);
-    }
-  }
-
   const updateGraph = () => {
-    xScale = GraphMaker.getLinearScale(0, maxX + 2, 0, GraphMaker.getCanvasWidth());
+    xScale = GraphMaker.getLinearScale(0, maxX + 2, 0, GraphMaker.getGraphWidth());
     if (!xAxisObject) {
       xAxisObject = GraphMaker.setXAxis({ scale: xScale, label: 'Day' });
     } else {
@@ -215,9 +205,9 @@ export const After100Cases = async function() {
       maxY = - maxTotalDeaths.peekValue();
     }
     if (currentYScale === 'linear') {
-      yScale = GraphMaker.getLinearScale(0, maxY + (maxY / 10), GraphMaker.getCanvasHeight(), 0);
+      yScale = GraphMaker.getLinearScale(0, maxY + (maxY / 10), GraphMaker.getGraphHeight(), 0);
     } else {
-      yScale = GraphMaker.getLogScale(0, maxY + (maxY / 10), GraphMaker.getCanvasHeight(), 0, 10**3);
+      yScale = GraphMaker.getLogScale(0, maxY + (maxY / 10), GraphMaker.getGraphHeight(), 0, 10**3);
     }
     yAxisProps.scale = yScale;
     if (!yAxisObject) {
@@ -256,12 +246,24 @@ export const After100Cases = async function() {
     });
   }
 
+  // Get initial data
+  for (let i in initialSelectedCountries) {
+    const countryCode = initialSelectedCountries[i];
+    let data = [];
+    try {
+      data = await fetchHistoricalData(countryCode);
+      filterAndGroupData(data, countryCode);
+    } catch(e) {
+      console.error(e);
+    }
+  }
+
   // Base graph
-  const graphWrap = addElementUnder('div', { class: 'graph-wrap' }, {}, 'after-100days');
+  const graphWrap = document.getElementById('after-100days');
   const GraphMaker = Object.assign(
     {},
     line(),
-    canvas(),
+    baseGraph(),
     margin(),
     xAxis(), 
     yAxis(),
@@ -271,8 +273,8 @@ export const After100Cases = async function() {
     dot(),
   )
   GraphMaker.setMargin({ top: 10, right: 30, bottom: 80, left: 80 });
-  const graph = GraphMaker.setCanvas(800, 600, 'after-100days');
-  let xScale, xAxisObject, yScale, yAxisObject, lines, texts;
+  const graph = GraphMaker.setGraph(800, 600, 'after-100days');
+  GraphMaker.setTransition(350);
   const tooltipObject = GraphMaker.setTooltip({});
   const graphDetails = addElementUnder('details', { class: 'graph-details' }, {}, '', graphWrap);
   const graphTitle = addElementUnder('summary', { class: 'graph-title' }, {}, '', graphDetails);
@@ -319,6 +321,12 @@ export const After100Cases = async function() {
             maxTotalDeaths.pop();
           }
         }
+        if (currentSelectedIndex === existingIndex) {
+          currentSelectedIndex = -1;
+          currentSelectedData = [];
+        } 
+        currentSelectedIndex--;
+       
       }
       countriesSelectInput.value = '';
       removeLinesToAxis();
@@ -358,10 +366,10 @@ export const After100Cases = async function() {
       maxY = - maxTotalConfirmed.peekValue();
     }
     if (currentYScale === 'linear') {
-      yScale = GraphMaker.getLinearScale(0, maxY + (maxY / 10), GraphMaker.getCanvasHeight(), 0);
+      yScale = GraphMaker.getLinearScale(0, maxY + (maxY / 10), GraphMaker.getGraphHeight(), 0);
       GraphMaker.updateYAxis({ scale: yScale, label: yAxisLabel });
     } else {
-      yScale = GraphMaker.getLogScale(0, maxY + (maxY / 10), GraphMaker.getCanvasHeight(), 0, 10**3);
+      yScale = GraphMaker.getLogScale(0, maxY + (maxY / 10), GraphMaker.getGraphHeight(), 0, 10**3);
       GraphMaker.updateYAxis({ scale: yScale, label: yAxisLabel });
     }
     removeLinesToAxis();
@@ -389,10 +397,10 @@ export const After100Cases = async function() {
     currentYScale = event.target.value;
     let maxY = currentYProp === 'TotalDeaths' ? - maxTotalDeaths.peekValue() : -maxTotalConfirmed.peekValue();
     if (currentYScale === 'linear') {
-      yScale = GraphMaker.getLinearScale(0, maxY + (maxY/ 10), GraphMaker.getCanvasHeight(), 0);
+      yScale = GraphMaker.getLinearScale(0, maxY + (maxY/ 10), GraphMaker.getGraphHeight(), 0);
       GraphMaker.updateYAxis({ scale: yScale});
     } else {
-      yScale = GraphMaker.getLogScale(0, maxY + (maxY / 10), GraphMaker.getCanvasHeight(), 0, 10 ** 3);
+      yScale = GraphMaker.getLogScale(0, maxY + (maxY / 10), GraphMaker.getGraphHeight(), 0, 10 ** 3);
       GraphMaker.updateYAxis({ scale: yScale });
     }
     removeLinesToAxis();

@@ -1,8 +1,8 @@
-import {select, selectAll} from 'd3-selection';
+import {select} from 'd3-selection';
 import {max} from 'd3-array';
 
 import {margin} from '../mixin/margin';
-import {canvas} from '../mixin/canvas';
+import {baseGraph} from '../mixin/baseGraph';
 import {logScale} from'../mixin/logScale';
 import {xAxis} from'../mixin/xAxis';
 import {yAxis} from'../mixin/yAxis';
@@ -26,7 +26,7 @@ export const DeathsConfirmedGraph = async function () {
       <div class='space-between-text'><span>Confirmed</span><span>${data.TotalConfirmed.toLocaleString()}</span></div>
       <div class='space-between-text'><span>Deaths</span><span>${data.TotalDeaths.toLocaleString()}</span></div>`);
 
-  const setSliderLabel = (data) => {
+  const setInfoBoxText = (data) => {
     const date = new Date(data.Date);
     infoBox.innerHTML = `
       <p>${data.Country} in ${date.toLocaleDateString()}</p>
@@ -64,7 +64,7 @@ export const DeathsConfirmedGraph = async function () {
     slider.style.visibility = 'visible';
 
     const data = currentFocusedHistoricalData[lastDateIndex];
-    setSliderLabel(data);
+    setInfoBoxText(data);
   }
 
   const highlightDot = (dot) => {
@@ -81,47 +81,41 @@ export const DeathsConfirmedGraph = async function () {
   }
 
   const removeLinesToAxis = () => {
-    graph.selectAll('line.hightlight-line').remove();
+    GraphMaker.removeLineToXAxis();
+    GraphMaker.removeLineToYAxis();
   }
 
   const addLinesToAxis = (d) => {
-    graph
-      .append('line')
-      .attr('class', 'hightlight-line')
-      .style('stroke', 'grey')
-      .style('stroke-dasharray', ('2, 3'))
-      .attr('x1', 0)
-      .attr('y1', yScale(d.TotalConfirmed))
-      .attr('x2', GraphMaker.getCanvasWidth)
-      .attr('y2', yScale(d.TotalConfirmed));
+    GraphMaker.drawLineToYAxis({scale: yScale, y:d.TotalConfirmed});
+    GraphMaker.drawLineToXAxis({ scale: xScale, x: d.TotalDeaths });
+  }
 
-    graph.append('line')
-      .attr('class', 'hightlight-line')
-      .style('stroke', 'grey')
-      .style('stroke-dasharray', ('2, 3'))
-      .attr('x1', 0)
-      .attr('x1', xScale(d.TotalDeaths))
-      .attr('y1', 0)
-      .attr('x2', xScale(d.TotalDeaths))
-      .attr('y2', GraphMaker.getCanvasHeight);
+  const handleDotMouseover = function (d) {
+    tooltipObject.style('visibility', 'visible');
+  }
+
+  const handleDotMouseout = () => {
+    tooltipObject.style('visibility', 'hidden');
   }
 
   const handleDotClick = async function (d, i) {
     event.stopPropagation();
+    removeLinesToAxis();
+    addLinesToAxis(d);
     if (i !== currentFocusedIndex) {
       currentFocusedIndex = i;
       removeHighlight();
       highlightDot(this);
-      removeLinesToAxis();
-      addLinesToAxis(d);
       setTooltipValue(d);
       await setHistoricalData(d);
-      setSlider();
+      if (currentFocusedHistoricalData.length > 0) {
+        setSlider();
+      }
     }
   }
 
   // Base graph
-  const graphWrap = addElementUnder('div', { class: 'graph-wrap' }, {}, 'confirmed-deaths');
+  const graphWrap = document.getElementById('confirmed-deaths');
   const graphDetails = addElementUnder('details', { class: 'graph-details' }, {}, '', graphWrap);
   const graphTitle = addElementUnder('summary', { class: 'graph-title' }, {}, '', graphDetails);
   graphTitle.innerHTML = 'Total Deaths - Total Confirmed Cases';
@@ -131,14 +125,15 @@ export const DeathsConfirmedGraph = async function () {
     {},
     dot(),
     margin(),
-    canvas(),
+    baseGraph(),
     logScale(),
     xAxis(),
     yAxis(),
     tooltip(),
   );
   GraphMaker.setMargin({ top: 10, right: 30, bottom: 80, left: 80 });
-  const graph = GraphMaker.setCanvas(800, 600, 'confirmed-deaths');
+  const graph = GraphMaker.setGraph(800, 600, 'confirmed-deaths');
+  GraphMaker.setTransition(350);
   select('#confirmed-deaths > svg').on('click', function () {
     removeHighlight();
     removeLinesToAxis();
@@ -147,9 +142,9 @@ export const DeathsConfirmedGraph = async function () {
     infoBox.innerHTML = '';
     currentFocusedIndex = -1;
   })
-  const xScale = GraphMaker.getLogScale(0, max(summaryData, getTotalDeaths), 0, GraphMaker.getCanvasWidth(), 10);
+  const xScale = GraphMaker.getLogScale(0, max(summaryData, getTotalDeaths), 0, GraphMaker.getGraphWidth(), 10);
   GraphMaker.setXAxis({ scale: xScale, tickNumber: 3, label: 'Total Deaths' });
-  const yScale = GraphMaker.getLogScale(0, max(summaryData, getTotalConfirmed), GraphMaker.getCanvasHeight(), 0, 10**3);
+  const yScale = GraphMaker.getLogScale(0, max(summaryData, getTotalConfirmed), GraphMaker.getGraphHeight(), 0, 10**3);
   GraphMaker.setYAxis({ scale: yScale, label: 'Total Confirmed Cases' });
   const dots = GraphMaker.drawDots({
     data: summaryData,
@@ -161,9 +156,9 @@ export const DeathsConfirmedGraph = async function () {
     color: defaultColor,
   });
 
-  dots.on('mouseover', () => tooltipObject.style('visibility', 'visible'))
+  dots.on('mouseover',handleDotMouseover)
     .on('mousemove', setTooltipValue)
-    .on('mouseout', () => tooltipObject.style('visibility', 'hidden'))
+    .on('mouseout', handleDotMouseout)
     .on('click', handleDotClick);
 
   const tooltipObject = GraphMaker.setTooltip({});
@@ -205,7 +200,7 @@ export const DeathsConfirmedGraph = async function () {
 
   slider.oninput = function () {
     const newData = currentFocusedHistoricalData[this.value];
-    setSliderLabel(newData);
+    setInfoBoxText(newData);
     updateDisplayData(newData);
     removeLinesToAxis();
     addLinesToAxis(newData);

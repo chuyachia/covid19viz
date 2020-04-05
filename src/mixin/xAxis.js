@@ -1,4 +1,3 @@
-import {format} from 'd3-format';
 import {axisBottom} from 'd3-axis';
 
 export const xAxis = () => {
@@ -7,10 +6,10 @@ export const xAxis = () => {
     setXAxis: function ({ scale, tickNumber, label }) {
       const margin = this.getMargin ? this.getMargin().bottom / 2 : 0;
 
-      if (!this.getCanvas || ! this.getCanvas()) {
-        throw new ReferenceError('You need to set canvas first before setting axis');
+      if (!this.getGraph || ! this.getGraph()) {
+        throw new ReferenceError('You need to set graph first before setting axis');
       }
-      const svg = this.getCanvas();
+      const svg = this.getGraph();
       const xAxis = axisBottom(scale);
       if (tickNumber) {
         xAxis.ticks(tickNumber);
@@ -18,13 +17,13 @@ export const xAxis = () => {
 
       const axis = svg.append('g')
         .attr('class','x-axis')
-        .attr('transform', 'translate(0,' + this.getCanvasHeight() + ')')
+        .attr('transform', 'translate(0,' + this.getGraphHeight() + ')')
         .call(xAxis);
 
       if (label) {
         svg.append('text')
-          .attr('transform', 'translate(' + (this.getCanvasWidth() / 2) + ' ,' +
-            (this.getCanvasHeight() + margin) + ')')
+          .attr('transform', 'translate(' + (this.getGraphWidth() / 2) + ' ,' +
+            (this.getGraphHeight() + margin) + ')')
           .style('text-anchor', 'middle')
           .text(label);
       }
@@ -32,10 +31,10 @@ export const xAxis = () => {
       return axis;
     },
     updateXAxis: function ({ scale, tickNumber, label }) {
-      if (!this.getCanvas || !this.getCanvas()) {
-        throw new ReferenceError('You need to set canvas first before setting axis');
+      if (!this.getGraph || !this.getGraph()) {
+        throw new ReferenceError('You need to set graph first before setting axis');
       }
-      const svg = this.getCanvas();
+      const svg = this.getGraph();
       const xAxis = axisBottom(scale);
       if (tickNumber) {
         xAxis.ticks(tickNumber);
@@ -50,6 +49,31 @@ export const xAxis = () => {
       }
 
       return axis;
+   },
+    drawLineToXAxis: function ({ scale, x, color = 'grey' }) {
+      if (!this.getGraph || !this.getGraph()) {
+        throw new ReferenceError('You need to set graph first before setting axis');
+      }
+
+      const svg = this.getGraph();
+      svg.append('line')
+        .attr('class', 'line-to-x-axis')
+        .style('stroke', color)
+        .style('stroke-dasharray', ('2, 3'))
+        .attr('x1', 0)
+        .attr('x1', scale(x))
+        .attr('y1', 0)
+        .attr('x2', scale(x))
+        .attr('y2', this.getGraphHeight());
+
+    },
+    removeLineToXAxis: function() {
+      if (!this.getGraph || !this.getGraph()) {
+        throw new ReferenceError('You need to set graph first before setting axis');
+      }
+
+      const svg = this.getGraph();
+      svg.selectAll('line.line-to-x-axis').remove();
     }
   }
 }
