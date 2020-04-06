@@ -21,7 +21,7 @@ export const After100Cases = async function() {
   const highlightColor = 'orange';
   const defaultWidth = 2;
   const highlightWidth = 4;
-  const initialSelectedCountries = ['italy', 'us'];
+  const initialSelectedCountries = ['italy'];
   let selectedCountries = [];
   let currentSelectedData = [];
   let currentSelectedIndex = -1;
@@ -301,6 +301,8 @@ export const After100Cases = async function() {
   countriesSelectInput.onkeydown = async function (event) {
     if (event.key === 'Enter') {
       const countryCode = event.target.value;
+      console.log(countryCode);
+      console.log(selectedCountries);
       const existingIndex = selectedCountries.indexOf(countryCode);
       if (existingIndex === -1) {
         try {
