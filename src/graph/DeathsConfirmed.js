@@ -12,13 +12,37 @@ import {fetchSummaryData, fetchHistoricalData,fetchCountriesList} from '../api';
 import {addElementUnder} from '../util';
 
 export const DeathsConfirmedGraph = async function () {
-  const countriesList = await fetchCountriesList();
+  let countriesList = [];
+  let summaryData = []
+  let retryInfo;
   const defaultColor = '#20B2AA';
   const hightLightColor = 'orange';
-  let summaryData = await fetchSummaryData();
   let currentFocusedIndex;
   let currentFocusedCountry;
   let currentFocusedHistoricalData;
+
+  const getInitialData = async () => {
+    try {
+      if (retryInfo) {
+        retryInfo.style.visibility = 'hidden';
+      }
+      countriesList = await fetchCountriesList();
+      summaryData = await fetchSummaryData();
+      if (countriesList.length === 0 || summaryData.length === 0) {
+        throw new Error();
+      }
+    } catch (e) {
+      if (retryInfo) {
+        retryInfo.style.visibility = 'visible';
+      } else {
+        retryInfo = addElementUnder('div', {}, {}, '', graphWrap);
+        retryInfo.innerHTML = 'Something went wrong while loading data.';
+        const retryButton = addElementUnder('button', {}, {}, '', retryInfo);
+        retryButton.innerHTML = 'Try again';
+        retryButton.onclick = getInitialData;
+      }
+    }
+  }
 
   const getTotalConfirmed = (d) => d.TotalConfirmed;
   const getTotalDeaths = (d) => d.TotalDeaths
@@ -121,6 +145,9 @@ export const DeathsConfirmedGraph = async function () {
   graphTitle.innerHTML = 'Total Deaths - Total Confirmed Cases';
   const graphExplains= addElementUnder('p', {class: 'graph-explains' }, {}, '', graphDetails);
   graphExplains.innerHTML = 'Evolution of confirmed cases and deaths in time';
+
+  await getInitialData();
+
   const GraphMaker =  Object.assign(
     {},
     dot(),
