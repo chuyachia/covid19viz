@@ -16,6 +16,7 @@ export const baseGraph = () => {
       svg = select(`#${parentId}`) 
         .append('svg')
         .attr('class', 'graph')
+        .attr("viewBox", `0 0 ${width} ${height}`)
         .attr('width', width)
         .attr('height', height)
         .append('g')

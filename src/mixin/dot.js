@@ -1,7 +1,7 @@
 export const dot = () => {
 
   return {
-    drawDots: function ({ data, x, y, xScale, yScale, size = 5, color = 'black'}) {
+    drawDots: function ({ data, x, y, xScale, yScale, size = 5, color = 'black', opacity="0.7"}) {
       if (!this.getGraph || !this.getGraph()) {
         throw new ReferenceError('You need to set graph first before drawing');
       }
@@ -18,7 +18,8 @@ export const dot = () => {
             .attr('cx', function (d, i) { return x? xScale(d[x]): xScale(i); })
             .attr('cy', function (d) { return yScale(d[y]); })
             .attr('r', size)
-            .style('fill', color),
+            .style('fill', color)
+            .style('fill-opacity', opacity),
           update => update
             .attr('cx', function (d, i) { return x? xScale(d[x]): xScale(i); })
             .call(update => {

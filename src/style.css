@@ -1,7 +1,17 @@
+:root {
+  --baseSpace: 15px;
+}
+
 body {
   font-family: Open Sans;
-  padding-left: 15px;
-  padding-right: 15px;
+  padding: var(--baseSpace);
+  overflow-x: scroll;
+  margin:0;
+}
+
+input {
+  margin-top:var(--baseSpace); 
+  margin-bottom:var(--baseSpace); 
 }
 
 footer {
@@ -21,18 +31,31 @@ footer {
 }
 
 .graph {
-  order: 2;
+  order: 3;
 }
 
 .graph-control {
-  order: 3;
+  flex: 1 0 100%;
+  order: 2;
+  width: 224px;
+}
+
+@media (min-width: 1200px) {
+  .graph {
+    order: 2;
+  }
+
+  .graph-control {
+    flex: 1 1 auto;
+    order: 3;
+  }
 }
 
 .graph-title {
   text-align: center;
   font-weight: bolder;
   font-size: 1.2em;
-  margin-bottom: 15px;
+  margin-bottom:var(--baseSpace); 
   cursor: pointer;
 }
 
@@ -42,10 +65,10 @@ footer {
 }
 
 .info-box {
-  margin-top: 15px;
-  margin-bottom: 15px;
+  /* margin-top: 15px;
+  margin-bottom: 15px; */
   background: #f2f2f2;
-  padding: 5px 15px 5px 15px;
+  padding: 5px var(--baseSpace) 5px var(--baseSpace);
 }
 
 .info-box:empty {

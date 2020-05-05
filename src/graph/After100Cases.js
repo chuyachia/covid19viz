@@ -276,7 +276,7 @@ export const After100Cases = async function() {
   const graph = GraphMaker.setGraph(800, 600, 'after-100days');
   GraphMaker.setTransition(350);
   const tooltipObject = GraphMaker.setTooltip({});
-  const graphDetails = addElementUnder('details', { class: 'graph-details' }, {}, '', graphWrap);
+  const graphDetails = addElementUnder('details', { class: 'graph-details', open: true }, {}, '', graphWrap);
   const graphTitle = addElementUnder('summary', { class: 'graph-title' }, {}, '', graphDetails);
   graphTitle.innerHTML = 'Trajectory After 100 Cases';
   const graphExplains= addElementUnder('p', {class: 'graph-explains' }, {}, '', graphDetails);
@@ -296,13 +296,33 @@ export const After100Cases = async function() {
     const option = addElementUnder('option', {value: countryData.Slug}, {}, '', countryDataList);
     option.innerHTML = countryData.Country;
   })
-  const countriesSelectInput = addElementUnder('input', {list:'countries-data-list'}, {}, '', graphControlPenal);
+
+  const handleRemoveCountry = (existingIndex, countryCode) => {
+    if (groupedData.length > 1) {
+      selectedCountries = [...selectedCountries.slice(0, existingIndex), ...selectedCountries.slice(existingIndex + 1)]
+      selectedCountriesSet.delete(countryCode);
+      groupedData = [...groupedData.slice(0, existingIndex), ...groupedData.slice(existingIndex + 1)];
+      while (!selectedCountriesSet.has(maxTotalConfirmed.peek()) && maxTotalConfirmed.length > 0) {
+        maxTotalConfirmed.pop();
+      }
+      while (!selectedCountriesSet.has(maxTotalDeaths.peek()) && maxTotalDeaths.length > 0) {
+        maxTotalDeaths.pop();
+      }
+      if (currentSelectedIndex === existingIndex) {
+        currentSelectedIndex = -1;
+        currentSelectedData = [];
+      }
+      currentSelectedIndex--;
+    } else {
+      alert('At least one country needs to be selected');
+    }
+  }
+
+  const countriesSelectInput = addElementUnder('input', {list:'countries-data-list', placeholder: 'Enter country name'}, {}, '', graphControlPenal);
 
   countriesSelectInput.onkeydown = async function (event) {
     if (event.key === 'Enter') {
       const countryCode = event.target.value;
-      console.log(countryCode);
-      console.log(selectedCountries);
       const existingIndex = selectedCountries.indexOf(countryCode);
       if (existingIndex === -1) {
         try {
@@ -312,23 +332,7 @@ export const After100Cases = async function() {
           console.error(e);
         }
       } else {
-        if (groupedData.length > 1) {
-          selectedCountries = [...selectedCountries.slice(0, existingIndex), ...selectedCountries.slice(existingIndex + 1)]
-          selectedCountriesSet.delete(countryCode);
-          groupedData = [...groupedData.slice(0, existingIndex), ...groupedData.slice(existingIndex + 1)];
-          while (!selectedCountriesSet.has(maxTotalConfirmed.peek()) && maxTotalConfirmed.length > 0) {
-            maxTotalConfirmed.pop();
-          }
-          while (!selectedCountriesSet.has(maxTotalDeaths.peek()) && maxTotalDeaths.length > 0) {
-            maxTotalDeaths.pop();
-          }
-        }
-        if (currentSelectedIndex === existingIndex) {
-          currentSelectedIndex = -1;
-          currentSelectedData = [];
-        } 
-        currentSelectedIndex--;
-       
+        handleRemoveCountry(existingIndex, countryCode);
       }
       countriesSelectInput.value = '';
       removeLinesToAxis();
@@ -343,7 +347,7 @@ export const After100Cases = async function() {
   ];
   const yValueRadioInputWrap = addElementUnder('div', {}, {}, 'y-value-radio-input-wrap', graphControlPenal);
   const yValueradioInputLabel = addElementUnder('div', {class: 'input-label' }, {}, '', yValueRadioInputWrap);
-  yValueradioInputLabel.innerHTML = 'Y Axis Value'
+  yValueradioInputLabel.innerHTML = 'Choose Y Axis Value'
   yValueRadioButtons.forEach(button => {
     const props = { type: 'radio', value: button.value, name: 'y-axis-value' };
     if (button.checked) {
@@ -384,7 +388,7 @@ export const After100Cases = async function() {
   ];
   const yScaleRadioInputWrap = addElementUnder('div', {}, {}, 'y-scale-radio-input-wrap', graphControlPenal);
   const yScaleRadioInputLabel = addElementUnder('div', {class: 'input-label' }, {}, '', yScaleRadioInputWrap);
-  yScaleRadioInputLabel.innerHTML = 'Y Axis Scale'
+  yScaleRadioInputLabel.innerHTML = 'Choose Y Axis Scale'
   yScaleRadioButtons.forEach(button => {
     const props = { type: 'radio', value: button.value, name: 'y-axis-scale' };
     if (button.checked) {

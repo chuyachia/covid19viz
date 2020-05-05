@@ -17,6 +17,7 @@ export const DeathsConfirmedGraph = async function () {
   let retryInfo;
   const defaultColor = '#20B2AA';
   const hightLightColor = 'orange';
+  const opacity = '0.7';
   let currentFocusedIndex;
   let currentFocusedCountry;
   let currentFocusedHistoricalData;
@@ -85,7 +86,7 @@ export const DeathsConfirmedGraph = async function () {
     slider.setAttribute('max', lastDateIndex);
     slider.setAttribute('min', 0);
     slider.value = lastDateIndex;
-    slider.style.visibility = 'visible';
+    sliderWrap.style.visibility = 'visible';
 
     const data = currentFocusedHistoricalData[lastDateIndex];
     setInfoBoxText(data);
@@ -115,10 +116,12 @@ export const DeathsConfirmedGraph = async function () {
   }
 
   const handleDotMouseover = function (d) {
+    select(event.currentTarget).style('fill-opacity', "1");
     tooltipObject.style('visibility', 'visible');
   }
 
   const handleDotMouseout = () => {
+    select(event.currentTarget).style('fill-opacity', opacity);
     tooltipObject.style('visibility', 'hidden');
   }
 
@@ -140,7 +143,7 @@ export const DeathsConfirmedGraph = async function () {
 
   // Base graph
   const graphWrap = document.getElementById('confirmed-deaths');
-  const graphDetails = addElementUnder('details', { class: 'graph-details' }, {}, '', graphWrap);
+  const graphDetails = addElementUnder('details', { class: 'graph-details', open: true }, {}, '', graphWrap);
   const graphTitle = addElementUnder('summary', { class: 'graph-title' }, {}, '', graphDetails);
   graphTitle.innerHTML = 'Total Deaths - Total Confirmed Cases';
   const graphExplains= addElementUnder('p', {class: 'graph-explains' }, {}, '', graphDetails);
@@ -159,19 +162,19 @@ export const DeathsConfirmedGraph = async function () {
     tooltip(),
   );
   GraphMaker.setMargin({ top: 10, right: 30, bottom: 80, left: 80 });
-  const graph = GraphMaker.setGraph(800, 600, 'confirmed-deaths');
+  const graph = GraphMaker.setGraph(800, 500, 'confirmed-deaths');
   GraphMaker.setTransition(350);
   select('#confirmed-deaths > svg').on('click', function () {
     removeHighlight();
     removeLinesToAxis();
     updateGraph(summaryData);
-    slider.style.visibility = 'hidden';
+    sliderWrap.style.visibility = 'hidden';
     infoBox.innerHTML = '';
     currentFocusedIndex = -1;
   })
-  const xScale = GraphMaker.getLogScale(0, max(summaryData, getTotalDeaths), 0, GraphMaker.getGraphWidth(), 10);
+  const xScale = GraphMaker.getLogScale(0, max(summaryData, getTotalDeaths), 0, GraphMaker.getGraphWidth(), 10**3);
   GraphMaker.setXAxis({ scale: xScale, tickNumber: 3, label: 'Total Deaths' });
-  const yScale = GraphMaker.getLogScale(0, max(summaryData, getTotalConfirmed), GraphMaker.getGraphHeight(), 0, 10**3);
+  const yScale = GraphMaker.getLogScale(0, max(summaryData, getTotalConfirmed), GraphMaker.getGraphHeight(), 0, 10**5);
   GraphMaker.setYAxis({ scale: yScale, label: 'Total Confirmed Cases' });
   const dots = GraphMaker.drawDots({
     data: summaryData,
@@ -181,6 +184,7 @@ export const DeathsConfirmedGraph = async function () {
     yScale,
     size: 5,
     color: defaultColor,
+    opacity: opacity,
   });
 
   dots.on('mouseover',handleDotMouseover)
@@ -190,6 +194,7 @@ export const DeathsConfirmedGraph = async function () {
 
   const tooltipObject = GraphMaker.setTooltip({});
 
+  // Control Panel
   const graphControlPenal = addElementUnder('div', {class: 'graph-control'}, {}, '', graphWrap);
 
   // Country select
@@ -201,7 +206,7 @@ export const DeathsConfirmedGraph = async function () {
     const option = addElementUnder('option', {value: countryData.Slug}, {}, '', countryDataList);
     option.innerHTML = countryData.Country;
   })
-  const countrySelectInput = addElementUnder('input', {list:'countries-data-list'}, {}, '', countrySelectWrap);
+  const countrySelectInput = addElementUnder('input', {list:'countries-data-list', placeholder: 'Enter country name'}, {}, '', countrySelectWrap);
   countrySelectInput.onkeydown = function (event) {
     if (event.key === 'Enter') {
       const countryCode = event.target.value;
@@ -217,12 +222,15 @@ export const DeathsConfirmedGraph = async function () {
   }
 
   // Slider
+  const sliderWrap = addElementUnder('div', {}, { visibility: 'hidden' }, '', graphControlPenal);
+  const sliderLabel = addElementUnder('div', {class: 'input-label' }, {}, '', sliderWrap);
+  sliderLabel.innerHTML = 'Move slider to see historical data';
   const slider = addElementUnder(
     'input',
     { type: 'range', min: 0 },
-    { visibility: 'hidden' },
+    {  },
     '',
-    graphControlPenal
+    sliderWrap
   );
 
   slider.oninput = function () {
