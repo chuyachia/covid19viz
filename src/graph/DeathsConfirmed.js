@@ -12,38 +12,30 @@ import {fetchSummaryData, fetchHistoricalData,fetchCountriesList} from '../api';
 import {addElementUnder} from '../util';
 
 export const DeathsConfirmedGraph = async function () {
+  const GraphMaker =  Object.assign(
+    {},
+    dot(),
+    margin(),
+    baseGraph(),
+    logScale(),
+    xAxis(),
+    yAxis(),
+    tooltip(),
+  );
+
+  const DEFAULTCOLOR = '#20B2AA';
+  const HIGHLIGHTCOLOR = 'orange';
+  const OPACITY = '0.7';
+
   let countriesList = [];
   let summaryData = []
   let retryInfo;
-  const defaultColor = '#20B2AA';
-  const hightLightColor = 'orange';
-  const opacity = '0.7';
+  let xScale;
+  let yScale;
+  let dots;
   let currentFocusedIndex;
   let currentFocusedCountry;
   let currentFocusedHistoricalData;
-
-  const getInitialData = async () => {
-    try {
-      if (retryInfo) {
-        retryInfo.style.visibility = 'hidden';
-      }
-      countriesList = await fetchCountriesList();
-      summaryData = await fetchSummaryData();
-      if (countriesList.length === 0 || summaryData.length === 0) {
-        throw new Error();
-      }
-    } catch (e) {
-      if (retryInfo) {
-        retryInfo.style.visibility = 'visible';
-      } else {
-        retryInfo = addElementUnder('div', {}, {}, '', graphWrap);
-        retryInfo.innerHTML = 'Something went wrong while loading data.';
-        const retryButton = addElementUnder('button', {}, {}, '', retryInfo);
-        retryButton.innerHTML = 'Try again';
-        retryButton.onclick = getInitialData;
-      }
-    }
-  }
 
   const getTotalConfirmed = (d) => d.TotalConfirmed;
   const getTotalDeaths = (d) => d.TotalDeaths
@@ -95,14 +87,14 @@ export const DeathsConfirmedGraph = async function () {
   const highlightDot = (dot) => {
     select(dot)
       .attr('r', 10)
-      .style('fill', hightLightColor);
+      .style('fill', HIGHLIGHTCOLOR);
   }
 
   const removeHighlight = () => {
     graph
       .selectAll('circle')
       .attr('r', 5)
-      .style('fill', defaultColor);
+      .style('fill', DEFAULTCOLOR);
   }
 
   const removeLinesToAxis = () => {
@@ -121,7 +113,7 @@ export const DeathsConfirmedGraph = async function () {
   }
 
   const handleDotMouseout = () => {
-    select(event.currentTarget).style('fill-opacity', opacity);
+    select(event.currentTarget).style('fill-opacity', OPACITY);
     tooltipObject.style('visibility', 'hidden');
   }
 
@@ -141,6 +133,56 @@ export const DeathsConfirmedGraph = async function () {
     }
   }
 
+  const graphSetUp = () => {
+    xScale = GraphMaker.getLogScale(0, max(summaryData, getTotalDeaths), 0, GraphMaker.getGraphWidth(), 10 ** 3);
+    GraphMaker.setXAxis({ scale: xScale, tickNumber: 3, label: 'Total Deaths' });
+    yScale = GraphMaker.getLogScale(0, max(summaryData, getTotalConfirmed), GraphMaker.getGraphHeight(), 0, 10 ** 5);
+    GraphMaker.setYAxis({ scale: yScale, label: 'Total Confirmed Cases' });
+    dots = GraphMaker.drawDots({
+      data: summaryData,
+      x: 'TotalDeaths',
+      y: 'TotalConfirmed',
+      xScale,
+      yScale,
+      size: 5,
+      color: DEFAULTCOLOR,
+      opacity: OPACITY,
+    });
+
+    dots.on('mouseover', handleDotMouseover)
+      .on('mousemove', setTooltipValue)
+      .on('mouseout', handleDotMouseout)
+      .on('click', handleDotClick);
+  }
+  
+  const getInitialData = async () => {
+    try {
+      if (retryInfo) {
+        retryInfo.style.visibility = 'hidden';
+      }
+      countriesList = await fetchCountriesList();
+      summaryData = await fetchSummaryData();
+      if (countriesList.length === 0 || summaryData.length === 0) {
+        throw new Error();
+      }
+    } catch (e) {
+      if (retryInfo) {
+        retryInfo.style.visibility = 'visible';
+      } else {
+        retryInfo = addElementUnder('div', {}, {}, '', graphWrap);
+        retryInfo.innerHTML = 'Something went wrong while loading data.';
+        const retryButton = addElementUnder('button', {}, {}, '', retryInfo);
+        retryButton.innerHTML = 'Try again';
+        retryButton.onclick = async () =>  {
+          await getInitialData();
+          if (summaryData.length > 0) {
+            graphSetUp();
+          }
+        }
+      }
+    }
+  }
+
   // Base graph
   const graphWrap = document.getElementById('confirmed-deaths');
   const graphDetails = addElementUnder('details', { class: 'graph-details', open: true }, {}, '', graphWrap);
@@ -149,21 +191,17 @@ export const DeathsConfirmedGraph = async function () {
   const graphExplains= addElementUnder('p', {class: 'graph-explains' }, {}, '', graphDetails);
   graphExplains.innerHTML = 'Evolution of confirmed cases and deaths in time';
 
-  await getInitialData();
 
-  const GraphMaker =  Object.assign(
-    {},
-    dot(),
-    margin(),
-    baseGraph(),
-    logScale(),
-    xAxis(),
-    yAxis(),
-    tooltip(),
-  );
   GraphMaker.setMargin({ top: 10, right: 30, bottom: 80, left: 80 });
   const graph = GraphMaker.setGraph(800, 500, 'confirmed-deaths');
   GraphMaker.setTransition(350);
+  
+  await getInitialData();
+
+  if (summaryData.length > 0) {
+    graphSetUp();
+  }
+
   select('#confirmed-deaths > svg').on('click', function () {
     removeHighlight();
     removeLinesToAxis();
@@ -172,28 +210,8 @@ export const DeathsConfirmedGraph = async function () {
     infoBox.innerHTML = '';
     currentFocusedIndex = -1;
   })
-  const xScale = GraphMaker.getLogScale(0, max(summaryData, getTotalDeaths), 0, GraphMaker.getGraphWidth(), 10**3);
-  GraphMaker.setXAxis({ scale: xScale, tickNumber: 3, label: 'Total Deaths' });
-  const yScale = GraphMaker.getLogScale(0, max(summaryData, getTotalConfirmed), GraphMaker.getGraphHeight(), 0, 10**5);
-  GraphMaker.setYAxis({ scale: yScale, label: 'Total Confirmed Cases' });
-  const dots = GraphMaker.drawDots({
-    data: summaryData,
-    x: 'TotalDeaths',
-    y: 'TotalConfirmed',
-    xScale,
-    yScale,
-    size: 5,
-    color: defaultColor,
-    opacity: opacity,
-  });
-
-  dots.on('mouseover',handleDotMouseover)
-    .on('mousemove', setTooltipValue)
-    .on('mouseout', handleDotMouseout)
-    .on('click', handleDotClick);
 
   const tooltipObject = GraphMaker.setTooltip({});
-
   // Control Panel
   const graphControlPenal = addElementUnder('div', {class: 'graph-control'}, {}, '', graphWrap);
 

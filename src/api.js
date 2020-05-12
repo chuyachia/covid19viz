@@ -2,7 +2,6 @@ const apiBase = 'https://api.covid19api.com';
 
 const cache = {};
 
-
 export async function fetchSummaryData() {
   if (cache.summary) {
     return cache.summary;
@@ -49,11 +48,16 @@ export async function fetchHistoricalData(countryCode) {
 }
 
 export async function fetchCountriesList() {
-    const res = await fetch(apiBase + '/countries');
-    if (res.ok) {
-      const data = await res.json();
-      return data;
-    } else {
-      return [];
-    }
+  if (cache.countriesList) {
+    return cache.countriesList;
+  }
+
+  const res = await fetch(apiBase + '/countries');
+  if (res.ok) {
+    const data = await res.json();
+    cache.countriesList = data;
+    return data;
+  } else {
+    return [];
+  }
 }

@@ -3,9 +3,9 @@ import {After100Cases} from './graph/After100Cases';
 
 import './style.css';
 
-(function() {
-  DeathsConfirmedGraph();
-  After100Cases();
+(async function() {
+  await DeathsConfirmedGraph();
+  await After100Cases();
 })();
 
 

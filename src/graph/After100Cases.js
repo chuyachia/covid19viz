@@ -273,7 +273,7 @@ export const After100Cases = async function() {
     dot(),
   )
   GraphMaker.setMargin({ top: 10, right: 30, bottom: 80, left: 80 });
-  const graph = GraphMaker.setGraph(800, 600, 'after-100days');
+  const graph = GraphMaker.setGraph(800, 500, 'after-100days');
   GraphMaker.setTransition(350);
   const tooltipObject = GraphMaker.setTooltip({});
   const graphDetails = addElementUnder('details', { class: 'graph-details', open: true }, {}, '', graphWrap);
